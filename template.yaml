@@ -1,0 +1,100 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: "AWS::Serverless-2016-10-31"
+
+Parameters:
+  BaseName:
+    Type: String
+    Description: "Base name for all resources"
+    Default: "NHSMedicinesList"
+  APIKeySecretArn:
+    Type: String
+    Description: "ARN of the secret containing the API key" # Supplied separately
+
+Resources:
+  GetAuthFunction:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: index.lambda_handler
+      Runtime: "python3.12"
+      Timeout: 60
+      CodeUri: GetAuth/
+      Environment:
+        Variables:
+          BASE_NAME: !Ref BaseName
+      Policies:
+        Statement:
+          - Effect: Allow
+            Action:
+              - "secretsmanager:CreateSecret"
+              - "secretsmanager:UpdateSecret"
+              - "secretsmanager:PutSecretValue"
+            Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${BaseName}-*"
+          - Effect: Allow
+            Action:
+              - "ssm:PutParameter"
+            Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${BaseName}/*"
+
+  PrivateKeySecret:
+    Type: "AWS::SecretsManager::Secret"
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      Name: !Sub "${BaseName}-private-key"
+      Description: !Sub "${BaseName} Private key for signing JWT"
+
+  DynamoDBTable:
+    Type: "AWS::DynamoDB::Table"
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      TableName: !Sub "${BaseName}"
+      AttributeDefinitions:
+        - AttributeName: "EntryId"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "EntryId"
+          KeyType: "HASH"
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  ListAllMedicinesFunction:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: index.lambda_handler
+      Runtime: "python3.12"
+      Timeout: 120
+      CodeUri: ListAllMedicines/
+      Environment:
+        Variables:
+          BASE_NAME: !Ref BaseName
+          DYNAMODB_TABLE: !Ref DynamoDBTable
+          API_KEY_SECRET: !Ref APIKeySecretArn
+          PRIVATE_KEY_SECRET: !Ref PrivateKeySecret
+          KEY_ID: !Sub "${BaseName}"
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamoDBTable
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref APIKeySecretArn
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref PrivateKeySecret
+
+Outputs:
+  PublicKeyParam:
+    Description: "SSM Parameter Name for Public Key"
+    Value: !Sub "/${BaseName}/public-key"
+    Export:
+      Name: !Sub "${BaseName}-PublicKey"
+
+  JWKSParam:
+    Description: "SSM Parameter Name for JWKS"
+    Value: !Sub "/${BaseName}/jwks"
+    Export:
+      Name: !Sub "${BaseName}-JWKS"
+
+  DynamoDBTableName:
+    Description: "Name of the DynamoDB table"
+    Value: !Ref DynamoDBTable
+    Export:
+      Name: !Sub "${BaseName}-DynamoDBTableName"

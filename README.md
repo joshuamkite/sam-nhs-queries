@@ -1,5 +1,21 @@
 # sam nhs queries
 
+This projects demonstrates authenticating to the NHS content API and archiving data from it methodically using Serverless Application Model (SAM) with Python.
+
+## Components 
+
+### GetAuth Function
+
+Set up authentication for API access to NHS digital 'NHS Web Content' API. This lambda creates a public/private RSA key pair, then extracts the modulus from the public key to create a matching JWKS (JSON Web Key Set). The private key is put to Secrets Manager, the public key an JwKS are put to parameter store. The JWKS needs to be posted to NHS digital separately for use.
+
+### ListAllMedicines Function
+
+This lambda uses an NHS Digital API key together with the RSA Private key and JWKS created by the GetAuth function above to authenticate to the 'NHS web content API', get a JWT bearer token (valid for 5 minutes), and get a list of all the medicines described there. The API is rate limited and so we have exponential back off to assist retries. At the time of writing there are only 274 medicines listed there and so this can still be done reasonably with a single Lambda. The output is written to DynamoDB.
+
+### DynamoDBTable
+
+This is where we output our retrieved information
+
 ## Deployment/use
 
 ### At [NHS Digital onboarding](https://onboarding.prod.api.platform.nhs.uk/):
@@ -39,7 +55,9 @@ sam deploy \
 12. Trigger `ListAllMedicinesFunction` 
 13. Review DynamoDB table
 
-## cleanup
+
+## Cleanup
+
 ```bash
 sam delete \
     --stack-name NHSMedicines \

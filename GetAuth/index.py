@@ -1,9 +1,14 @@
 import os
 import json
 import base64
+import logging
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 import boto3
+
+# Setup logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 # Environment variables for file names and keys
 BASE_NAME = os.environ['BASE_NAME']
@@ -84,15 +89,15 @@ def save_parameter(param_name, param_value):
 
 
 def lambda_handler(event, context):
-    print("Generating RSA key pair...")
+    logger.info("Generating RSA key pair...")
     generate_rsa_keys()
 
-    print("Extracting modulus and exponent...")
+    logger.info("Extracting modulus and exponent...")
     with open(PUBLIC_KEY_FILE, 'rb') as f:
         public_key = serialization.load_pem_public_key(f.read())
     modulus, exponent = extract_modulus_exponent(public_key)
 
-    print("Creating JWKS file...")
+    logger.info("Creating JWKS file...")
     jwks = create_jwks(modulus, exponent)
     jwks_json = json.dumps(jwks, indent=4)
 

@@ -52,8 +52,8 @@ This Lambda function is designed to fetch an additional field for each medicine 
 - `about`
 
 **Configuration**:
-- **AdditionalField**: This parameter allows you to specify which field to fetch for each medicine. Update the `AdditionalField` parameter in the `template.yaml` to select the field you want.
-
+- **AdditionalField**: This parameter allows you to specify which field to fetch for each medicine. Update the `AdditionalField` parameter in the `template.yaml` to select the field you want. But see [warning](#warning) below.
+ 
 **Batch Processing**:
 - The Lambda function processes items in batches of 25 and uses DynamoDB pagination to handle large datasets efficiently. It accumulates up to 25 items that do not have the specified additional field and processes them in each iteration.
 
@@ -137,6 +137,8 @@ sam deploy \
 
 Be aware that due to [this open issue with SAM](https://github.com/aws/aws-sam-cli/issues/4404) updating parameters on a deployed stack may not be recognised. If your changes don't appear to make a difference then you may need to verify these are correct manually.
 
+By default directly deployed resources, such as the DynamoDB table are deleted on stack deletion. Whilst this is suitable for PoC work, it may not be suitable for your use case.
+
 ## Cleanup
 
 ```bash
@@ -146,4 +148,5 @@ sam delete \
 ```
 
 Delete your log groups 
+
 You will need to suspend versioning in your SAM S3 bucket if you opted to have this managed for you before you can truly empty and delete it.

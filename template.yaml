@@ -140,7 +140,7 @@ Resources:
       RoleArn: !GetAtt FetchAdditionalFieldStepFunctionRole.Arn
       DefinitionString: !Sub |
         {
-          "Comment": "A description of my state machine",
+          "Comment": "Fetch Additional Field for Medicines",
           "StartAt": "FetchAdditionalField",
           "States": {
             "FetchAdditionalField": {

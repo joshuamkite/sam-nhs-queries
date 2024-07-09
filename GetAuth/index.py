@@ -6,17 +6,19 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 import boto3
 
-# Setup logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 
 # Environment variables for file names and keys
 BASE_NAME = os.environ['BASE_NAME']
+LOGGER_LEVEL = os.getenv('LOGGER_LEVEL', 'WARNING').upper()
 KEYS_DIR = '/tmp'  # Lambda's writable directory
 PRIVATE_KEY_FILE = os.path.join(KEYS_DIR, f'{BASE_NAME}-private-key.pem')
 PUBLIC_KEY_FILE = os.path.join(KEYS_DIR, f'{BASE_NAME}-public-key.pem')
 JWKS_FILE = os.path.join(KEYS_DIR, f'{BASE_NAME}-jwks.json')
 KID = os.environ['BASE_NAME']
+
+# Configure logging
+logger = logging.getLogger()
+logger.setLevel(getattr(logging, LOGGER_LEVEL, logging.WARNING))
 
 # Initialize boto3 clients
 secrets_client = boto3.client('secretsmanager')

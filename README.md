@@ -12,6 +12,7 @@
     - [In AWS](#in-aws)
     - [At NHS Digital onboarding/Home/My applications and teams:](#at-nhs-digital-onboardinghomemy-applications-and-teams)
     - [In AWS](#in-aws-1)
+- [Warning](#warning)
   - [Cleanup](#cleanup)
 
 This projects demonstrates authenticating to the NHS content API and archiving data from it methodically using Serverless Application Model (SAM) with Python.
@@ -134,6 +135,10 @@ sam deploy \
 13. Review DynamoDB table
 14. Start the state machine execution from the AWS Step Functions console to begin processing the items in DynamoDB. The state machine will ensure that only one instance of the FetchAdditionalField Lambda function runs at a time, processing the items in batches.
 15.  Review DynamoDB table
+
+# Warning
+
+Be aware that due to [this open issue with SAM](https://github.com/aws/aws-sam-cli/issues/4404) updating parameters on a deployed stack may not be recognised. If your changes don't appear to make a difference then you may need to verify these are correct manually.
 
 ## Cleanup
 

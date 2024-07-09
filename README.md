@@ -1,5 +1,7 @@
 # sam nhs queries
 
+This projects demonstrates authenticating to the NHS content API and archiving data from it methodically to DynamoDB using Serverless Application Model (SAM) with Python.
+
 - [sam nhs queries](#sam-nhs-queries)
   - [Components](#components)
     - [GetAuth Function](#getauth-function)
@@ -14,8 +16,6 @@
     - [In AWS](#in-aws-1)
 - [Warning](#warning)
   - [Cleanup](#cleanup)
-
-This projects demonstrates authenticating to the NHS content API and archiving data from it methodically using Serverless Application Model (SAM) with Python.
 
 ## Components 
 
@@ -49,10 +49,7 @@ This Lambda function is designed to fetch an additional field for each medicine 
 
 **Available Fields**: You can configure the Lambda to fetch any additional field provided by the NHS API. Common fields include:
 - `description`
-- `sideEffects`
-- `warnings`
-- `dosage`
-- `contraindications`
+- `about`
 
 **Configuration**:
 - **AdditionalField**: This parameter allows you to specify which field to fetch for each medicine. Update the `AdditionalField` parameter in the `template.yaml` to select the field you want.

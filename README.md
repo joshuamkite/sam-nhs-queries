@@ -4,6 +4,8 @@ This projects demonstrates authenticating to the NHS content API and archiving d
 
 ## Components 
 
+For each Lambda logs there is a configurable Logger Level set based on an environment variable with a default to show only errors or warnings.
+
 ### GetAuth Function
 
 Set up authentication for API access to NHS digital 'NHS Web Content' API. This lambda creates a public/private RSA key pair, then extracts the modulus from the public key to create a matching JWKS (JSON Web Key Set). The private key is put to Secrets Manager, the public key and JWKS are put to parameter store. The JWKS needs to be posted to NHS digital separately for use.

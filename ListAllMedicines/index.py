@@ -13,15 +13,16 @@ from boto3.dynamodb.conditions import Key
 secrets_client = boto3.client('secretsmanager')
 dynamodb = boto3.resource('dynamodb')
 
-# Configure logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-
 # Load environment variables
 API_KEY_SECRET = os.getenv('API_KEY_SECRET')
 DYNAMODB_TABLE = os.getenv('DYNAMODB_TABLE')
 PRIVATE_KEY_SECRET = os.getenv('PRIVATE_KEY_SECRET')
 KEY_ID = os.getenv('KEY_ID')
+LOGGER_LEVEL = os.getenv('LOGGER_LEVEL', 'WARNING').upper()
+
+# Configure logging
+logger = logging.getLogger()
+logger.setLevel(getattr(logging, LOGGER_LEVEL, logging.WARNING))
 
 # Set base URL for 'int' environment
 BASE_URL = 'https://int.api.service.nhs.uk/oauth2'

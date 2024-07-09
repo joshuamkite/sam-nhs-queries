@@ -10,7 +10,21 @@ Set up authentication for API access to NHS digital 'NHS Web Content' API. This 
 
 ### ListAllMedicines Function
 
-This lambda uses an NHS Digital API key together with the RSA Private key and JWKS created by the GetAuth function above to authenticate to the 'NHS web content API', get a JWT bearer token (valid for 5 minutes), and get a list of all the medicines described there. The API is rate limited and so we have exponential back off to assist retries. At the time of writing there are only 274 medicines listed there and so this can still be done reasonably with a single Lambda. The output is written to DynamoDB.
+This lambda uses an NHS Digital API key together with the RSA Private key and JWKS created by the GetAuth function above to authenticate to the 'NHS web content API', get a JWT bearer token (valid for 5 minutes), and get a list of all the medicines described there. The API is rate limited and so we have exponential back off to assist retries. At the time of writing there are only 274 medicines listed there and so this can still be done reasonably with a single Lambda. The output is written to DynamoDB using the last segment of the medicine URL as the partition key, e.g:
+
+```json
+{
+  "EntryId": {
+    "S": "aspirin-for-pain-relief"
+  },
+  "Name": {
+    "S": "Aspirin for pain relief"
+  },
+  "URL": {
+    "S": "https://int.api.service.nhs.uk/nhs-website-content/medicines/aspirin-for-pain-relief/"
+  }
+}
+```
 
 ### DynamoDBTable
 

@@ -57,13 +57,16 @@ This Lambda function is designed to fetch an additional field for each medicine 
 - **AdditionalField**: This parameter allows you to specify which field to fetch for each medicine. Update the `AdditionalField` parameter in the `template.yaml` to select the field you want.
 
 **Batch Processing**:
-- The Lambda function processes items in batches of 25 (this limit can be adjusted) and uses DynamoDB pagination to handle large datasets efficiently.
+- The Lambda function processes items in batches of 25 and uses DynamoDB pagination to handle large datasets efficiently. It accumulates up to 25 items that do not have the specified additional field and processes them in each iteration.
 
 **Retry Logic**:
 - The Lambda function includes retry logic to handle temporary API rate limits. It uses exponential backoff to retry requests if rate limits are hit.
 
 **DynamoDB Update**:
 - The Lambda function updates the DynamoDB table with the new field for each medicine entry, ensuring no duplicate work is done. Only items that do not already have the additional field populated are processed.
+
+**Pagination Handling**:
+- The function handles DynamoDB pagination by checking the `LastEvaluatedKey` and continuing to scan until it accumulates the required number of items or reaches the end of the table.
 
 **Template Configuration**:
 ```yaml
@@ -84,6 +87,8 @@ The state machine orchestrates the FetchAdditionalField Lambda function to ensur
 **State Machine Definition**:
 - The state machine is defined in the CloudFormation template using the `AWS::StepFunctions::StateMachine` resource.
 - The state machine starts with the `FetchAdditionalField` task, which invokes the FetchAdditionalField Lambda function.
+- If there are more items to process (`moreItems` is true), the state machine waits for 1 second and then invokes the Lambda function again.
+- The state machine exits when there are no more items to process.
 
 ### DynamoDBTable
 

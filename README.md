@@ -1,5 +1,19 @@
 # sam nhs queries
 
+- [sam nhs queries](#sam-nhs-queries)
+  - [Components](#components)
+    - [GetAuth Function](#getauth-function)
+    - [ListAllMedicines Function](#listallmedicines-function)
+    - [FetchAdditionalField Lambda](#fetchadditionalfield-lambda)
+    - [State Machine](#state-machine)
+    - [DynamoDBTable](#dynamodbtable)
+  - [Deployment/use](#deploymentuse)
+    - [At NHS Digital onboarding:](#at-nhs-digital-onboarding)
+    - [In AWS](#in-aws)
+    - [At NHS Digital onboarding/Home/My applications and teams:](#at-nhs-digital-onboardinghomemy-applications-and-teams)
+    - [In AWS](#in-aws-1)
+  - [Cleanup](#cleanup)
+
 This projects demonstrates authenticating to the NHS content API and archiving data from it methodically using Serverless Application Model (SAM) with Python.
 
 ## Components 
@@ -27,6 +41,49 @@ This lambda uses an NHS Digital API key together with the RSA Private key and JW
   }
 }
 ```
+
+### FetchAdditionalField Lambda
+
+This Lambda function is designed to fetch an additional field for each medicine from the NHS API and update the DynamoDB table with the retrieved information. It processes items in batches to handle large datasets efficiently and ensures only one instance runs at a time using a Step Function.
+
+**Available Fields**: You can configure the Lambda to fetch any additional field provided by the NHS API. Common fields include:
+- `description`
+- `sideEffects`
+- `warnings`
+- `dosage`
+- `contraindications`
+
+**Configuration**:
+- **AdditionalField**: This parameter allows you to specify which field to fetch for each medicine. Update the `AdditionalField` parameter in the `template.yaml` to select the field you want.
+
+**Batch Processing**:
+- The Lambda function processes items in batches of 25 (this limit can be adjusted) and uses DynamoDB pagination to handle large datasets efficiently.
+
+**Retry Logic**:
+- The Lambda function includes retry logic to handle temporary API rate limits. It uses exponential backoff to retry requests if rate limits are hit.
+
+**DynamoDB Update**:
+- The Lambda function updates the DynamoDB table with the new field for each medicine entry, ensuring no duplicate work is done. Only items that do not already have the additional field populated are processed.
+
+**Template Configuration**:
+```yaml
+Parameters:
+  AdditionalField:
+    Type: String
+    Description: "The additional field to fetch for each medicine"
+    Default: "description"
+```
+
+**Example Usage**:
+- To change the field fetched by the Lambda, modify the `AdditionalField` parameter in the CloudFormation template to the desired field name (e.g., `sideEffects`).
+
+### State Machine
+
+The state machine orchestrates the FetchAdditionalField Lambda function to ensure only one instance runs at a time. This helps in efficiently managing the processing of large datasets without overwhelming the system.
+
+**State Machine Definition**:
+- The state machine is defined in the CloudFormation template using the `AWS::StepFunctions::StateMachine` resource.
+- The state machine starts with the `FetchAdditionalField` task, which invokes the FetchAdditionalField Lambda function.
 
 ### DynamoDBTable
 
@@ -70,7 +127,8 @@ sam deploy \
 
 12. Trigger `ListAllMedicinesFunction` 
 13. Review DynamoDB table
-
+14. Start the state machine execution from the AWS Step Functions console to begin processing the items in DynamoDB. The state machine will ensure that only one instance of the FetchAdditionalField Lambda function runs at a time, processing the items in batches.
+15.  Review DynamoDB table
 
 ## Cleanup
 

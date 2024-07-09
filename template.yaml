@@ -8,11 +8,15 @@ Parameters:
     Default: "NHSMedicinesList"
   APIKeySecretArn:
     Type: String
-    Description: "ARN of the secret containing the API key" # Supplied separately
+    Description: "ARN of the secret containing the API key"
   LoggerLevel:
     Type: String
     Description: "Logger level- can be INFO, WARNING, ERROR"
-    Default: "WARNING"
+    Default: "info"
+  AdditionalField:
+    Type: String
+    Description: "The additional field to fetch for each medicine"
+    Default: "description"
 
 Resources:
   GetAuthFunction:
@@ -85,6 +89,87 @@ Resources:
             SecretArn: !Ref APIKeySecretArn
         - AWSSecretsManagerGetSecretValuePolicy:
             SecretArn: !Ref PrivateKeySecret
+
+  FetchAdditionalFieldFunction:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: index.lambda_handler
+      Runtime: "python3.12"
+      Timeout: 300
+      CodeUri: FetchAdditionalField/
+      Environment:
+        Variables:
+          BASE_NAME: !Ref BaseName
+          DYNAMODB_TABLE: !Ref DynamoDBTable
+          API_KEY_SECRET: !Ref APIKeySecretArn
+          PRIVATE_KEY_SECRET: !Ref PrivateKeySecret
+          KEY_ID: !Sub "${BaseName}"
+          LOGGER_LEVEL: !Ref LoggerLevel
+          ADDITIONAL_FIELD: !Ref AdditionalField
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamoDBTable
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref APIKeySecretArn
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref PrivateKeySecret
+
+  FetchAdditionalFieldStepFunctionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "states.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: "FetchAdditionalFieldStepFunctionPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "lambda:InvokeFunction"
+                Resource: "*"
+
+  FetchAdditionalFieldStepFunction:
+    Type: "AWS::StepFunctions::StateMachine"
+    Properties:
+      RoleArn: !GetAtt FetchAdditionalFieldStepFunctionRole.Arn
+      DefinitionString: !Sub |
+        {
+          "Comment": "Fetch Additional Field for Medicines",
+          "StartAt": "FetchAdditionalField",
+          "States": {
+            "FetchAdditionalField": {
+              "Type": "Task",
+              "Resource": "${FetchAdditionalFieldFunction.Arn}",
+              "ResultPath": "$.FetchResult",
+              "Next": "CheckMoreItems"
+            },
+            "CheckMoreItems": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.FetchResult.moreItems",
+                  "BooleanEquals": true,
+                  "Next": "WaitBeforeNextFetch"
+                }
+              ],
+              "Default": "EndState"
+            },
+            "WaitBeforeNextFetch": {
+              "Type": "Wait",
+              "Seconds": 1,
+              "Next": "FetchAdditionalField"
+            },
+            "EndState": {
+              "Type": "Succeed"
+            }
+          }
+        }
 
 Outputs:
   PublicKeyParam:

@@ -144,3 +144,6 @@ sam delete \
     --stack-name NHSMedicines \
     --region eu-west-2
 ```
+
+Delete your log groups 
+You will need to suspend versioning in your SAM S3 bucket if you opted to have this managed for you before you can truly empty and delete it.

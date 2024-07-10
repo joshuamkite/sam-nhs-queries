@@ -35,6 +35,7 @@ CONTENT_API_BASE_URL = 'https://int.api.service.nhs.uk/nhs-website-content'
 
 
 def get_secret(secret_arn):
+    """Retrieve a secret from AWS Secrets Manager."""
     try:
         logger.info(f"Retrieving secret for ARN: {secret_arn}")
         response = secrets_client.get_secret_value(SecretId=secret_arn)
@@ -45,6 +46,7 @@ def get_secret(secret_arn):
 
 
 def generate_jwt_token(api_key, private_key, key_id):
+    """Generate a JWT token for authentication."""
     current_time = int(time.time())
     payload = {
         "iss": api_key,
@@ -65,6 +67,7 @@ def generate_jwt_token(api_key, private_key, key_id):
 
 
 def get_access_token(api_key, private_key, key_id):
+    """Get an access token from the NHS API."""
     logger.info("Generating access token")
     jwt_token = generate_jwt_token(api_key, private_key, key_id)
     headers = {
@@ -85,6 +88,7 @@ def get_access_token(api_key, private_key, key_id):
 
 
 def fetch_medicine_detail(api_key, access_token, medicine_url, retries=5, backoff_factor=1.5):
+    """Fetch medicine details from the NHS API."""
     headers = {
         "Authorization": f"Bearer {access_token}",
         "apikey": api_key,
@@ -108,6 +112,7 @@ def fetch_medicine_detail(api_key, access_token, medicine_url, retries=5, backof
 
 
 def update_dynamodb(entry_id, field_name, field_value):
+    """Update the DynamoDB table with the additional field value."""
     table = dynamodb.Table(DYNAMODB_TABLE)
     try:
         logger.info(f"Updating DynamoDB for EntryId: {entry_id}")
@@ -130,6 +135,7 @@ def update_dynamodb(entry_id, field_name, field_value):
 
 
 def lambda_handler(event, context):
+    """Main Lambda handler function."""
     logger.info(f"Event received: {json.dumps(event)}")
 
     # Fetch the secrets from Secrets Manager

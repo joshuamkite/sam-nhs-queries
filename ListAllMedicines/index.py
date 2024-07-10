@@ -30,11 +30,13 @@ CONTENT_API_BASE_URL = 'https://int.api.service.nhs.uk/nhs-website-content'
 
 
 def get_secret(secret_arn):
+    """Retrieve a secret from AWS Secrets Manager."""
     response = secrets_client.get_secret_value(SecretId=secret_arn)
     return response['SecretString']
 
 
 def generate_jwt_token(api_key, private_key, key_id):
+    """Generate a JWT token for authentication."""
     current_time = int(time.time())
     payload = {
         "iss": api_key,
@@ -62,6 +64,7 @@ def generate_jwt_token(api_key, private_key, key_id):
 
 
 def get_access_token(api_key, private_key, key_id):
+    """Get an access token from the NHS API."""
     jwt_token = generate_jwt_token(api_key, private_key, key_id)
     logger.info(f"Generated JWT: {jwt_token}")
     headers = {
@@ -81,6 +84,7 @@ def get_access_token(api_key, private_key, key_id):
 
 
 def list_medicines(api_key, access_token, page=1, retries=5, backoff_factor=1.5):
+    """Fetch the list of medicines from the NHS API."""
     headers = {
         "Authorization": f"Bearer {access_token}",
         "apikey": api_key,
@@ -103,6 +107,7 @@ def list_medicines(api_key, access_token, page=1, retries=5, backoff_factor=1.5)
 
 
 def write_to_dynamodb(medicines_data):
+    """Write the list of medicines to the DynamoDB table."""
     table = dynamodb.Table(DYNAMODB_TABLE)
     for item in medicines_data:
         entry_id = item['url'].rstrip('/').split('/')[-1]
@@ -116,6 +121,7 @@ def write_to_dynamodb(medicines_data):
 
 
 def lambda_handler(event, context):
+    """Main Lambda handler function."""
     # Fetch the secrets from Secrets Manager
     api_key = get_secret(API_KEY_SECRET)
     private_key = get_secret(PRIVATE_KEY_SECRET)

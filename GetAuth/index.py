@@ -6,7 +6,6 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 import boto3
 
-
 # Environment variables for file names and keys
 BASE_NAME = os.environ['BASE_NAME']
 LOGGER_LEVEL = os.getenv('LOGGER_LEVEL', 'WARNING').upper()
@@ -26,6 +25,7 @@ ssm_client = boto3.client('ssm')
 
 
 def generate_rsa_keys():
+    """Generate RSA key pair and save to files."""
     os.makedirs(KEYS_DIR, exist_ok=True)
 
     # Generate private key
@@ -54,6 +54,7 @@ def generate_rsa_keys():
 
 
 def extract_modulus_exponent(public_key):
+    """Extract modulus and exponent from the public key."""
     numbers = public_key.public_numbers()
     modulus = numbers.n
     exponent = numbers.e
@@ -61,10 +62,12 @@ def extract_modulus_exponent(public_key):
 
 
 def base64_url_encode(data):
+    """Base64 URL encode the given data."""
     return base64.urlsafe_b64encode(data).decode('utf-8').rstrip('=')
 
 
 def create_jwks(modulus, exponent):
+    """Create a JWKS (JSON Web Key Set) from modulus and exponent."""
     n = base64_url_encode(modulus.to_bytes((modulus.bit_length() + 7) // 8, 'big'))
     e = base64_url_encode(exponent.to_bytes((exponent.bit_length() + 7) // 8, 'big'))
     jwks = {
@@ -83,14 +86,17 @@ def create_jwks(modulus, exponent):
 
 
 def save_secret(secret_name, secret_value):
+    """Save a secret to AWS Secrets Manager."""
     secrets_client.put_secret_value(SecretId=secret_name, SecretString=secret_value)
 
 
 def save_parameter(param_name, param_value):
+    """Save a parameter to AWS SSM Parameter Store."""
     ssm_client.put_parameter(Name=param_name, Value=param_value, Type='String', Overwrite=True)
 
 
 def lambda_handler(event, context):
+    """Main Lambda handler function."""
     logger.info("Generating RSA key pair...")
     generate_rsa_keys()
 

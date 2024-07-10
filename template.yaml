@@ -12,7 +12,7 @@ Parameters:
   LoggerLevel:
     Type: String
     Description: "Logger level- can be INFO, WARNING, ERROR"
-    Default: "info"
+    Default: "warning"
   AdditionalField:
     Type: String
     Description: "The additional field to fetch for each medicine"

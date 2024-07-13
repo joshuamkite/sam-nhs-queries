@@ -124,9 +124,10 @@ sam deploy \
 
 7. Trigger the 'GetAuth' Lambda function manually, e.g., in the Console with 'test'. This should populate the private key and SSM parameter public key and jwks. Normally you would only need to run this Lambda once.
 8. Collect jwks from parameter store and save as, e.g., 'key.json' with e.g.
-   ```bash
-  aws ssm get-parameter --name "/NHSMedicinesList/jwks" --query "Parameter.Value" --output text > jwks.json
-   ```
+
+```bash
+aws ssm get-parameter --name "/NHSMedicinesList/jwks" --query "Parameter.Value" --output text > jwks.json
+```
 
 ### At NHS Digital onboarding/Home/My applications and teams:
 

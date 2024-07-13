@@ -1,6 +1,6 @@
 # sam nhs queries
 
-This project demonstrates authenticating to the NHS content API and archiving data from it methodically to DynamoDB using Serverless Application Model (SAM) with Python. The API has a multi-stage authentication mechanism, is rate limited, and final-stage bearer tokens have a short lifetime. Data collection is in stages, using various techniques to accommodate all these requirements 
+This project demonstrates authenticating to the NHS content API and archiving data from it methodically to DynamoDB using Serverless Application Model (SAM) with Python. The API has a multi-stage authentication mechanism, is rate limited, and final-stage bearer tokens have a short lifetime. Data collection is in stages, using various techniques to accommodate all these requirements.
 
 - [sam nhs queries](#sam-nhs-queries)
   - [Components](#components)
@@ -26,18 +26,15 @@ Sets up [authentication for API access to NHS digital 'NHS Web Content' API](htt
 
 ### ListAllMedicines Function
 
-This Lambda uses an NHS Digital API key together with the RSA Private key and JWKS created by the GetAuth function to authenticate to the 'NHS web content API', get a JWT bearer token (valid for 5 minutes), and get a list of all the medicines described there. The API is rate-limited, and so we have exponential backoff to assist retries. At the time of writing, there are only 274 medicines listed, so this can be done reasonably with a single Lambda. The output is written to DynamoDB using the last segment of the medicine URL as the partition key, e.g.:
+This Lambda uses an NHS Digital API key together with the RSA Private key and JWKS created by the GetAuth function to authenticate to the 'NHS web content API', get a JWT bearer token (valid for 5 minutes), and get a list of all the medicines described there. The API is rate-limited, and so we have exponential backoff to assist retries. At the time of writing, there are only 274 medicines listed, so this can be done reasonably with a single Lambda. The output is written to DynamoDB using the `URL` as the partition key and the `Name` as the sort key, e.g.:
 
 ```json
 {
-  "EntryId": {
-    "S": "aspirin-for-pain-relief"
+  "URL": {
+    "S": "https://int.api.service.nhs.uk/nhs-website-content/medicines/aspirin-for-pain-relief/"
   },
   "Name": {
     "S": "Aspirin for pain relief"
-  },
-  "URL": {
-    "S": "https://int.api.service.nhs.uk/nhs-website-content/medicines/aspirin-for-pain-relief/"
   }
 }
 ```
@@ -55,7 +52,7 @@ This Lambda function is designed to fetch an additional field for each medicine 
 
 **Configuration**:
 - **AdditionalField**: This parameter allows you to specify which field to fetch for each medicine. Update the `AdditionalField` parameter in the `template.yaml` to select the field you want. But see [warning](#warning) below.
- 
+
 **Template Configuration**:
 ```yaml
 Parameters:
@@ -80,9 +77,12 @@ Parameters:
 **Pagination Handling**:
 - The function handles DynamoDB pagination by checking the `LastEvaluatedKey` and continuing to scan until it accumulates the required number of items or reaches the end of the table.
 
+**Note**: Despite structuring of the table for better future access patterns and clarity, the `scan` operation is still used to find items without the specified additional field, as DynamoDB does not support using `query` for this purpose.
+
 ### For all Lambdas
 
 For each Lambda, logs have a configurable Logger Level set based on an environment variable with a default to show only errors or warnings.
+
 ### State Machine
 
 The state machine orchestrates the FetchAdditionalField Lambda function to ensure only one instance runs at a time. This helps in efficiently managing the processing of large datasets without overwhelming the system.
@@ -123,7 +123,10 @@ sam deploy \
 ```
 
 7. Trigger the 'GetAuth' Lambda function manually, e.g., in the Console with 'test'. This should populate the private key and SSM parameter public key and jwks. Normally you would only need to run this Lambda once.
-8. Collect jwks from parameter store and save as, e.g., 'key.json'.
+8. Collect jwks from parameter store and save as, e.g., 'key.json' with e.g.
+   ```bash
+  aws ssm get-parameter --name "/NHSMedicinesList/jwks" --query "Parameter.Value" --output text > jwks.json
+   ```
 
 ### At NHS Digital onboarding/Home/My applications and teams:
 

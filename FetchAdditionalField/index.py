@@ -7,7 +7,7 @@ import logging
 import uuid
 from cryptography.hazmat.primitives import serialization
 import boto3
-from boto3.dynamodb.conditions import Attr
+from boto3.dynamodb.conditions import Key, Attr
 from botocore.exceptions import ClientError
 
 # Initialize boto3 clients
@@ -26,7 +26,7 @@ LOGGER_LEVEL = os.getenv('LOGGER_LEVEL', 'INFO').upper()
 logger = logging.getLogger()
 logger.setLevel(getattr(logging, LOGGER_LEVEL, logging.INFO))
 log_handler = logging.StreamHandler()
-log_handler.setLevel(getattr(logging, LOGGER_LEVEL, logging.INFO))
+log_handler.setLevel(getattr(logging, LOGGER_LEVEL, logging.WARNING))
 logger.addHandler(log_handler)
 
 # Set base URL for 'int' environment
@@ -35,7 +35,6 @@ CONTENT_API_BASE_URL = 'https://int.api.service.nhs.uk/nhs-website-content'
 
 
 def get_secret(secret_arn):
-    """Retrieve a secret from AWS Secrets Manager."""
     try:
         logger.info(f"Retrieving secret for ARN: {secret_arn}")
         response = secrets_client.get_secret_value(SecretId=secret_arn)
@@ -46,7 +45,6 @@ def get_secret(secret_arn):
 
 
 def generate_jwt_token(api_key, private_key, key_id):
-    """Generate a JWT token for authentication."""
     current_time = int(time.time())
     payload = {
         "iss": api_key,
@@ -67,7 +65,6 @@ def generate_jwt_token(api_key, private_key, key_id):
 
 
 def get_access_token(api_key, private_key, key_id):
-    """Get an access token from the NHS API."""
     logger.info("Generating access token")
     jwt_token = generate_jwt_token(api_key, private_key, key_id)
     headers = {
@@ -88,7 +85,6 @@ def get_access_token(api_key, private_key, key_id):
 
 
 def fetch_medicine_detail(api_key, access_token, medicine_url, retries=5, backoff_factor=1.5):
-    """Fetch medicine details from the NHS API."""
     headers = {
         "Authorization": f"Bearer {access_token}",
         "apikey": api_key,
@@ -111,13 +107,15 @@ def fetch_medicine_detail(api_key, access_token, medicine_url, retries=5, backof
     return None
 
 
-def update_dynamodb(entry_id, field_name, field_value):
-    """Update the DynamoDB table with the additional field value."""
+def update_dynamodb(url, name, field_name, field_value):
     table = dynamodb.Table(DYNAMODB_TABLE)
     try:
-        logger.info(f"Updating DynamoDB for EntryId: {entry_id}")
+        logger.info(f"Updating DynamoDB for URL: {url}")
         response = table.update_item(
-            Key={'EntryId': entry_id},
+            Key={
+                'URL': url,
+                'Name': name
+            },
             UpdateExpression=f"SET #field = :value",
             ExpressionAttributeNames={
                 "#field": field_name
@@ -135,7 +133,6 @@ def update_dynamodb(entry_id, field_name, field_value):
 
 
 def lambda_handler(event, context):
-    """Main Lambda handler function."""
     logger.info(f"Event received: {json.dumps(event)}")
 
     # Fetch the secrets from Secrets Manager
@@ -178,19 +175,19 @@ def lambda_handler(event, context):
 
     table = dynamodb.Table(DYNAMODB_TABLE)
 
-    # Scan for the first 25 items without the ADDITIONAL_FIELD
+    # Query for the first 25 items without the ADDITIONAL_FIELD
     accumulated_items = []
     last_evaluated_key = None
 
     while len(accumulated_items) < 25:
-        scan_params = {
+        query_params = {
             'FilterExpression': Attr(ADDITIONAL_FIELD).not_exists(),
             'Limit': 25
         }
         if last_evaluated_key:
-            scan_params['ExclusiveStartKey'] = last_evaluated_key
+            query_params['ExclusiveStartKey'] = last_evaluated_key
 
-        response = table.scan(**scan_params)
+        response = table.scan(**query_params)
         items = response['Items']
         accumulated_items.extend(items)
 
@@ -209,22 +206,22 @@ def lambda_handler(event, context):
     processed_items = set()
 
     for item in accumulated_items:
-        entry_id = item['EntryId']
-        medicine_url = item['URL']
+        url = item['URL']
+        name = item['Name']
 
-        logger.info(f"Fetching details for EntryId: {entry_id} from URL: {medicine_url}")
-        medicine_detail = fetch_medicine_detail(api_key, access_token, medicine_url)
+        logger.info(f"Fetching details for URL: {url}")
+        medicine_detail = fetch_medicine_detail(api_key, access_token, url)
 
         if medicine_detail and ADDITIONAL_FIELD in medicine_detail:
             field_value = medicine_detail[ADDITIONAL_FIELD]
-            logger.info(f"Updating EntryId: {entry_id} with {ADDITIONAL_FIELD}: {field_value}")
-            update_success = update_dynamodb(entry_id, ADDITIONAL_FIELD, field_value)
+            logger.info(f"Updating URL: {url} with {ADDITIONAL_FIELD}: {field_value}")
+            update_success = update_dynamodb(url, name, ADDITIONAL_FIELD, field_value)
             if update_success:
-                processed_items.add(entry_id)
+                processed_items.add(url)
             else:
-                logger.error(f"Failed to update DynamoDB for EntryId: {entry_id}")
+                logger.error(f"Failed to update DynamoDB for URL: {url}")
         else:
-            logger.warning(f"No {ADDITIONAL_FIELD} found for EntryId: {entry_id}")
+            logger.warning(f"No {ADDITIONAL_FIELD} found for URL: {url}")
 
     more_items = len(accumulated_items) == 25
 

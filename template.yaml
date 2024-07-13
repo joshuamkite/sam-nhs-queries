@@ -58,11 +58,15 @@ Resources:
     Properties:
       TableName: !Sub "${BaseName}"
       AttributeDefinitions:
-        - AttributeName: "EntryId"
+        - AttributeName: "URL"
+          AttributeType: "S"
+        - AttributeName: "Name"
           AttributeType: "S"
       KeySchema:
-        - AttributeName: "EntryId"
+        - AttributeName: "URL"
           KeyType: "HASH"
+        - AttributeName: "Name"
+          KeyType: "RANGE"
       ProvisionedThroughput:
         ReadCapacityUnits: 1
         WriteCapacityUnits: 1
@@ -81,7 +85,6 @@ Resources:
           API_KEY_SECRET: !Ref APIKeySecretArn
           PRIVATE_KEY_SECRET: !Ref PrivateKeySecret
           KEY_ID: !Sub "${BaseName}"
-          LOGGER_LEVEL: !Ref LoggerLevel
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref DynamoDBTable
@@ -104,7 +107,6 @@ Resources:
           API_KEY_SECRET: !Ref APIKeySecretArn
           PRIVATE_KEY_SECRET: !Ref PrivateKeySecret
           KEY_ID: !Sub "${BaseName}"
-          LOGGER_LEVEL: !Ref LoggerLevel
           ADDITIONAL_FIELD: !Ref AdditionalField
       Policies:
         - DynamoDBCrudPolicy:

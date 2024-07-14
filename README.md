@@ -93,6 +93,18 @@ The state machine orchestrates the FetchAdditionalField Lambda function to ensur
 - If there are more items to process (`moreItems` is true), the state machine waits for 1 second and then invokes the Lambda function again.
 - The state machine exits when there are no more items to process.
 
+**Diagram**
+
+```mermaid
+stateDiagram-v2
+    [*] --> FetchAdditionalField: Start
+    FetchAdditionalField --> CheckMoreItems: Fetch additional field
+    CheckMoreItems --> WaitBeforeNextFetch: More items?
+    WaitBeforeNextFetch --> FetchAdditionalField: Wait 1 second
+    CheckMoreItems --> EndState: No more items
+    EndState --> [*]: Succeed
+```
+
 ### DynamoDBTable
 
 This is where we output our retrieved information.
